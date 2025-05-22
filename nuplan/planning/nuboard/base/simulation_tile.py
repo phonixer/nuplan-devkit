@@ -439,8 +439,22 @@ class SimulationTile:
         try:
             if len(selected_simulation_figure.ego_state_plot.data_sources):
                 chrome_options = webdriver.ChromeOptions()
+                chrome_options.binary_location = "/mnt/slurmfs-4090node1/homes/rzhong151/rzhong151/Diffusion-Planner/chrome-linux64/chrome"  # <- Chrome 浏览器路径
                 chrome_options.headless = True
-                driver = webdriver.Chrome(chrome_options=chrome_options)
+                chrome_options.add_argument('--headless')
+                chrome_options.add_argument('--no-sandbox')
+                chrome_options.add_argument('--disable-dev-shm-usage')
+                chrome_options.add_argument('--disable-gpu')
+                chrome_options.add_argument('--window-size=1920x1080')  # 避免渲染出错
+                print("headless mode")
+                driver_path = "/mnt/slurmfs-4090node1/homes/rzhong151/rzhong151/Diffusion-Planner/chromedriver-linux64/chromedriver"
+                # 这里手动指定 ChromeDriver 的路径
+                from selenium.webdriver.chrome.service import Service
+                service = Service(executable_path=driver_path)  # <- 修改为你的实际路径
+
+                # driver = webdriver.Chrome(options=chrome_options)
+                # driver = webdriver.Chrome(driver_path, options=chrome_options)
+                driver = webdriver.Chrome(service=service, options=chrome_options)
                 driver.set_window_size(1920, 1080)
                 shape = None
                 simulation_figure = self._create_initial_figure(
@@ -448,15 +462,25 @@ class SimulationTile:
                     backend="canvas",
                     figure_sizes=simulation_tile_style["render_figure_sizes"],
                 )
+                print("simulation_figure created")
                 # Copy the data sources
                 simulation_figure.copy_datasources(selected_simulation_figure)
                 self._render_scenario(main_figure=simulation_figure)
                 length = len(selected_simulation_figure.ego_state_plot.data_sources)
-                for frame_index in tqdm(range(length), desc="Rendering video"):
+                for frame_index in tqdm(range(length), desc="Rendering video"):  # 开始渲染
                     self._render_plots(main_figure=simulation_figure, frame_index=frame_index)
-                    image = get_screenshot_as_png(column(simulation_figure.figure), driver=driver)
-                    shape = image.size
-                    images.append(image)
+                        # 可选短暂延时，保证渲染完成
+                    time.sleep(0.5)
+                    try:
+                        image = get_screenshot_as_png(column(simulation_figure.figure), driver=driver)
+                        shape = image.size
+                        images.append(image)
+                    except Exception as frame_error:
+                        logger.warning(f"Frame {frame_index} render failed: {frame_error}")
+                        continue
+                    # image = get_screenshot_as_png(column(simulation_figure.figure), driver=driver)
+                    # shape = image.size
+                    # images.append(image)
                     label = f"Rendering video now... ({frame_index}/{length})"
                     self._doc.add_next_tick_callback(
                         partial(self._update_video_button_label, figure_index=figure_index, label=label)
