@@ -470,31 +470,40 @@ class SimulationTile:
                 for frame_index in tqdm(range(length), desc="Rendering video"):  # 开始渲染
                     self._render_plots(main_figure=simulation_figure, frame_index=frame_index)
                         # 可选短暂延时，保证渲染完成
-                    # time.sleep(0.5)
-                    # try:
-                    #     image = get_screenshot_as_png(column(simulation_figure.figure), driver=driver)
-                    #     shape = image.size
-                    #     images.append(image)
-                    # except Exception as frame_error:
-                    #     logger.warning(f"Frame {frame_index} render failed: {frame_error}")
-                    #     continue
-                    # 等待 Bokeh plot 加载完成
-                    from selenium.webdriver.common.by import By
-                    from selenium.webdriver.support.ui import WebDriverWait
-                    from selenium.webdriver.support import expected_conditions as EC
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CLASS_NAME, "bk-plot-layout"))  # 你可以根据页面实际 class 改
-                    )
-                    retries=3 
-                    delay=0.15
+                    time.sleep(0.005)
+                    retries=20 
+                    delay=0.005
                     for attempt in range(retries):
                         try:
                             image = get_screenshot_as_png(column(simulation_figure.figure), driver=driver)
+                            shape = image.size
                             if image is not None:
-                                return image
-                        except Exception as e:
-                            print(f"Retry {attempt + 1}/{retries}: {e}")
-                        time.sleep(delay)
+                                # print(f"Frame {frame_index} rendered no successfully.")
+                                images.append(image)
+                                break
+                        except Exception as frame_error:
+                            time.sleep(delay)
+                            logger.warning(f"Frame {frame_index} render failed: {frame_error}")
+                            continue
+                    # # 等待 Bokeh plot 加载完成
+                    # from selenium.webdriver.common.by import By
+                    # from selenium.webdriver.support.ui import WebDriverWait
+                    # from selenium.webdriver.support import expected_conditions as EC
+                    # print("Waiting for Bokeh plot to load...")
+                    # WebDriverWait(driver, 10).until(
+                    #     EC.presence_of_element_located((By.CLASS_NAME, "bk-plot-layout"))  # 你可以根据页面实际 class 改
+                    # )
+                    # retries=3 
+                    # delay=0.15
+                    # for attempt in range(retries):
+                    #     try:
+                    #         image = get_screenshot_as_png(column(simulation_figure.figure), driver=driver)
+                    #         if image is not None:
+                    #             print(f"Frame {frame_index} rendered no successfully.")
+                    #             break
+                    #     except Exception as e:
+                    #         print(f"Retry {attempt + 1}/{retries}: {e}")
+                    #     time.sleep(delay)
 
                     # image = get_screenshot_as_png(column(simulation_figure.figure), driver=driver)
                     # shape = image.size
